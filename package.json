@@ -1,7 +1,7 @@
 {
   "name": "react-weblineindia-currency-input",
   "description": "Currency Input component built in ReactJS, used for currency value input field for all countries. You can change prefix and suffix for input. Can also handle negative and positive values depending on requirement.",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "author": "Weblineindia",
   "license": "MIT",
   "repository": "https://github.com/weblineindia/ReactJS-Currency-Input",
@@ -25,7 +25,7 @@
     "deploy": "gh-pages -d example/build"
   },
   "peerDependencies": {
-    "react": "^16.0.0"
+    "react": "^18.2.0"
   },
   "keywords": [
     "react-weblineindia-currency-input",
@@ -38,7 +38,6 @@
     "input-field-component"
   ],
   "devDependencies": {
-    "microbundle-crl": "^0.13.10",
     "babel-eslint": "^10.0.3",
     "cross-env": "^7.0.2",
     "eslint": "^6.8.0",
@@ -52,10 +51,11 @@
     "eslint-plugin-react": "^7.17.0",
     "eslint-plugin-standard": "^4.0.1",
     "gh-pages": "^2.2.0",
+    "microbundle-crl": "^0.13.10",
     "npm-run-all": "^4.1.5",
     "prettier": "^2.0.4",
-    "react": "^16.13.1",
-    "react-dom": "^16.13.1",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
     "react-scripts": "^3.4.1"
   },
   "files": [

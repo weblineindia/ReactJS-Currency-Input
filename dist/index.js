@@ -5,15 +5,14 @@ var React = _interopDefault(require('react'));
 function _inheritsLoose(subClass, superClass) {
   subClass.prototype = Object.create(superClass.prototype);
   subClass.prototype.constructor = subClass;
-  subClass.__proto__ = superClass;
+  _setPrototypeOf(subClass, superClass);
 }
-
-function _assertThisInitialized(self) {
-  if (self === void 0) {
-    throw new ReferenceError("this hasn't been initialised - super() hasn't been called");
-  }
-
-  return self;
+function _setPrototypeOf(o, p) {
+  _setPrototypeOf = Object.setPrototypeOf ? Object.setPrototypeOf.bind() : function _setPrototypeOf(o, p) {
+    o.__proto__ = p;
+    return o;
+  };
+  return _setPrototypeOf(o, p);
 }
 
 function createCommonjsModule(fn, module) {
@@ -348,12 +347,14 @@ var ReactPropTypesSecret = 'SECRET_DO_NOT_PASS_THIS_OR_YOU_WILL_BE_FIRED';
 
 var ReactPropTypesSecret_1 = ReactPropTypesSecret;
 
+var has = Function.call.bind(Object.prototype.hasOwnProperty);
+
 var printWarning = function() {};
 
 if (process.env.NODE_ENV !== 'production') {
   var ReactPropTypesSecret$1 = ReactPropTypesSecret_1;
   var loggedTypeFailures = {};
-  var has = Function.call.bind(Object.prototype.hasOwnProperty);
+  var has$1 = has;
 
   printWarning = function(text) {
     var message = 'Warning: ' + text;
@@ -365,7 +366,7 @@ if (process.env.NODE_ENV !== 'production') {
       // This error was thrown as a convenience so that you can use this stack
       // to find the callsite that caused this warning to fire.
       throw new Error(message);
-    } catch (x) {}
+    } catch (x) { /**/ }
   };
 }
 
@@ -383,7 +384,7 @@ if (process.env.NODE_ENV !== 'production') {
 function checkPropTypes(typeSpecs, values, location, componentName, getStack) {
   if (process.env.NODE_ENV !== 'production') {
     for (var typeSpecName in typeSpecs) {
-      if (has(typeSpecs, typeSpecName)) {
+      if (has$1(typeSpecs, typeSpecName)) {
         var error;
         // Prop type validation may throw. In case they do, we don't want to
         // fail the render phase where it didn't fail before. So we log it.
@@ -394,7 +395,8 @@ function checkPropTypes(typeSpecs, values, location, componentName, getStack) {
           if (typeof typeSpecs[typeSpecName] !== 'function') {
             var err = Error(
               (componentName || 'React class') + ': ' + location + ' type `' + typeSpecName + '` is invalid; ' +
-              'it must be a function, usually from the `prop-types` package, but received `' + typeof typeSpecs[typeSpecName] + '`.'
+              'it must be a function, usually from the `prop-types` package, but received `' + typeof typeSpecs[typeSpecName] + '`.' +
+              'This often happens because of typos such as `PropTypes.function` instead of `PropTypes.func`.'
             );
             err.name = 'Invariant Violation';
             throw err;
@@ -442,7 +444,6 @@ checkPropTypes.resetWarningCache = function() {
 
 var checkPropTypes_1 = checkPropTypes;
 
-var has$1 = Function.call.bind(Object.prototype.hasOwnProperty);
 var printWarning$1 = function() {};
 
 if (process.env.NODE_ENV !== 'production') {
@@ -543,6 +544,7 @@ var factoryWithTypeCheckers = function(isValidElement, throwOnDirectAccess) {
   // Keep this list in sync with production version in `./factoryWithThrowingShims.js`.
   var ReactPropTypes = {
     array: createPrimitiveTypeChecker('array'),
+    bigint: createPrimitiveTypeChecker('bigint'),
     bool: createPrimitiveTypeChecker('boolean'),
     func: createPrimitiveTypeChecker('function'),
     number: createPrimitiveTypeChecker('number'),
@@ -588,8 +590,9 @@ var factoryWithTypeCheckers = function(isValidElement, throwOnDirectAccess) {
    * is prohibitively expensive if they are created too often, such as what
    * happens in oneOfType() for any type before the one that matched.
    */
-  function PropTypeError(message) {
+  function PropTypeError(message, data) {
     this.message = message;
+    this.data = data && typeof data === 'object' ? data: {};
     this.stack = '';
   }
   // Make `instanceof Error` still work for returned errors.
@@ -624,7 +627,7 @@ var factoryWithTypeCheckers = function(isValidElement, throwOnDirectAccess) {
           ) {
             printWarning$1(
               'You are manually calling a React.PropTypes validation ' +
-              'function for the `' + propFullName + '` prop on `' + componentName  + '`. This is deprecated ' +
+              'function for the `' + propFullName + '` prop on `' + componentName + '`. This is deprecated ' +
               'and will throw in the standalone `prop-types` package. ' +
               'You may be seeing this warning due to a third-party PropTypes ' +
               'library. See https://fb.me/react-warning-dont-call-proptypes ' + 'for details.'
@@ -663,7 +666,10 @@ var factoryWithTypeCheckers = function(isValidElement, throwOnDirectAccess) {
         // 'of type `object`'.
         var preciseType = getPreciseType(propValue);
 
-        return new PropTypeError('Invalid ' + location + ' `' + propFullName + '` of type ' + ('`' + preciseType + '` supplied to `' + componentName + '`, expected ') + ('`' + expectedType + '`.'));
+        return new PropTypeError(
+          'Invalid ' + location + ' `' + propFullName + '` of type ' + ('`' + preciseType + '` supplied to `' + componentName + '`, expected ') + ('`' + expectedType + '`.'),
+          {expectedType: expectedType}
+        );
       }
       return null;
     }
@@ -777,7 +783,7 @@ var factoryWithTypeCheckers = function(isValidElement, throwOnDirectAccess) {
         return new PropTypeError('Invalid ' + location + ' `' + propFullName + '` of type ' + ('`' + propType + '` supplied to `' + componentName + '`, expected an object.'));
       }
       for (var key in propValue) {
-        if (has$1(propValue, key)) {
+        if (has(propValue, key)) {
           var error = typeChecker(propValue, key, componentName, location, propFullName + '.' + key, ReactPropTypesSecret_1);
           if (error instanceof Error) {
             return error;
@@ -807,14 +813,19 @@ var factoryWithTypeCheckers = function(isValidElement, throwOnDirectAccess) {
     }
 
     function validate(props, propName, componentName, location, propFullName) {
+      var expectedTypes = [];
       for (var i = 0; i < arrayOfTypeCheckers.length; i++) {
         var checker = arrayOfTypeCheckers[i];
-        if (checker(props, propName, componentName, location, propFullName, ReactPropTypesSecret_1) == null) {
+        var checkerResult = checker(props, propName, componentName, location, propFullName, ReactPropTypesSecret_1);
+        if (checkerResult == null) {
           return null;
         }
+        if (checkerResult.data && has(checkerResult.data, 'expectedType')) {
+          expectedTypes.push(checkerResult.data.expectedType);
+        }
       }
-
-      return new PropTypeError('Invalid ' + location + ' `' + propFullName + '` supplied to ' + ('`' + componentName + '`.'));
+      var expectedTypesMessage = (expectedTypes.length > 0) ? ', expected one of type [' + expectedTypes.join(', ') + ']': '';
+      return new PropTypeError('Invalid ' + location + ' `' + propFullName + '` supplied to ' + ('`' + componentName + '`' + expectedTypesMessage + '.'));
     }
     return createChainableTypeChecker(validate);
   }
@@ -829,6 +840,13 @@ var factoryWithTypeCheckers = function(isValidElement, throwOnDirectAccess) {
     return createChainableTypeChecker(validate);
   }
 
+  function invalidValidatorError(componentName, location, propFullName, key, type) {
+    return new PropTypeError(
+      (componentName || 'React class') + ': ' + location + ' type `' + propFullName + '.' + key + '` is invalid; ' +
+      'it must be a function, usually from the `prop-types` package, but received `' + type + '`.'
+    );
+  }
+
   function createShapeTypeChecker(shapeTypes) {
     function validate(props, propName, componentName, location, propFullName) {
       var propValue = props[propName];
@@ -838,8 +856,8 @@ var factoryWithTypeCheckers = function(isValidElement, throwOnDirectAccess) {
       }
       for (var key in shapeTypes) {
         var checker = shapeTypes[key];
-        if (!checker) {
-          continue;
+        if (typeof checker !== 'function') {
+          return invalidValidatorError(componentName, location, propFullName, key, getPreciseType(checker));
         }
         var error = checker(propValue, key, componentName, location, propFullName + '.' + key, ReactPropTypesSecret_1);
         if (error) {
@@ -858,16 +876,18 @@ var factoryWithTypeCheckers = function(isValidElement, throwOnDirectAccess) {
       if (propType !== 'object') {
         return new PropTypeError('Invalid ' + location + ' `' + propFullName + '` of type `' + propType + '` ' + ('supplied to `' + componentName + '`, expected `object`.'));
       }
-      // We need to check all keys in case some are required but missing from
-      // props.
+      // We need to check all keys in case some are required but missing from props.
       var allKeys = objectAssign({}, props[propName], shapeTypes);
       for (var key in allKeys) {
         var checker = shapeTypes[key];
+        if (has(shapeTypes, key) && typeof checker !== 'function') {
+          return invalidValidatorError(componentName, location, propFullName, key, getPreciseType(checker));
+        }
         if (!checker) {
           return new PropTypeError(
             'Invalid ' + location + ' `' + propFullName + '` key `' + key + '` supplied to `' + componentName + '`.' +
             '\nBad object: ' + JSON.stringify(props[propName], null, '  ') +
-            '\nValid keys: ' +  JSON.stringify(Object.keys(shapeTypes), null, '  ')
+            '\nValid keys: ' + JSON.stringify(Object.keys(shapeTypes), null, '  ')
           );
         }
         var error = checker(propValue, key, componentName, location, propFullName + '.' + key, ReactPropTypesSecret_1);
@@ -1043,6 +1063,7 @@ var factoryWithThrowingShims = function() {
   // Keep this list in sync with production version in `./factoryWithTypeCheckers.js`.
   var ReactPropTypes = {
     array: shim,
+    bigint: shim,
     bool: shim,
     func: shim,
     number: shim,
@@ -1118,11 +1139,9 @@ function splitString(str, index) {
 function limitToScale(numStr, scale, fixedDecimalScale) {
   var str = '';
   var filler = fixedDecimalScale ? '0' : '';
-
   for (var i = 0; i <= scale - 1; i++) {
     str += numStr[i] || filler;
   }
-
   return str;
 }
 function roundToPrecision(numStr, scale, fixedDecimalScale) {
@@ -1132,7 +1151,6 @@ function roundToPrecision(numStr, scale, fixedDecimalScale) {
     if (roundedStr.length > idx) {
       return (Number(roundedStr[0]) + Number(current)).toString() + roundedStr.substring(1, roundedStr.length);
     }
-
     return current + roundedStr;
   }, roundedDecimalParts[0]);
   var decimalPart = limitToScale(roundedDecimalParts[1] || '', (numberParts[1] || '').length, fixedDecimalScale);
@@ -1147,7 +1165,6 @@ function omit(obj, keyMaps) {
 }
 function setCaretPosition(el, caretPos) {
   el.value = el.value;
-
   if (el !== null) {
     if (el.createTextRange) {
       var range = el.createTextRange();
@@ -1155,13 +1172,11 @@ function setCaretPosition(el, caretPos) {
       range.select();
       return true;
     }
-
     if (el.selectionStart || el.selectionStart === 0) {
       el.focus();
       el.setSelectionRange(caretPos, caretPos);
       return true;
     }
-
     el.focus();
     return false;
   }
@@ -1217,47 +1232,36 @@ var defaultProps = {
   onBlur: noop,
   isAllowed: returnTrue
 };
-
 var CurrencyFormat = /*#__PURE__*/function (_React$Component) {
-  _inheritsLoose(CurrencyFormat, _React$Component);
-
   function CurrencyFormat(props) {
     var _this;
-
     _this = _React$Component.call(this, props) || this;
-
     _this.validateProps();
-
     var formattedValue = _this.formatValueProp();
-
     _this.state = {
       value: formattedValue,
       numAsString: _this.removeFormatting(formattedValue)
     };
-    _this.onChange = _this.onChange.bind(_assertThisInitialized(_this));
-    _this.onKeyDown = _this.onKeyDown.bind(_assertThisInitialized(_this));
-    _this.onMouseUp = _this.onMouseUp.bind(_assertThisInitialized(_this));
-    _this.onFocus = _this.onFocus.bind(_assertThisInitialized(_this));
-    _this.onBlur = _this.onBlur.bind(_assertThisInitialized(_this));
+    _this.onChange = _this.onChange.bind(_this);
+    _this.onKeyDown = _this.onKeyDown.bind(_this);
+    _this.onMouseUp = _this.onMouseUp.bind(_this);
+    _this.onFocus = _this.onFocus.bind(_this);
+    _this.onBlur = _this.onBlur.bind(_this);
     return _this;
   }
-
+  _inheritsLoose(CurrencyFormat, _React$Component);
   var _proto = CurrencyFormat.prototype;
-
   _proto.componentDidUpdate = function componentDidUpdate(prevProps) {
     this.updateValueIfRequired(prevProps);
   };
-
   _proto.updateValueIfRequired = function updateValueIfRequired(prevProps) {
     var props = this.props,
-        state = this.state;
-
+      state = this.state;
     if (prevProps !== props) {
       this.validateProps();
       var stateValue = state.value;
       var lastNumStr = state.numAsString || '';
       var formattedValue = props.value === undefined ? this.formatNumString(lastNumStr) : this.formatValueProp();
-
       if (formattedValue !== stateValue) {
         this.setState({
           value: formattedValue,
@@ -1266,88 +1270,68 @@ var CurrencyFormat = /*#__PURE__*/function (_React$Component) {
       }
     }
   };
-
   _proto.getFloatString = function getFloatString(num) {
     if (num === void 0) {
       num = '';
     }
-
     var _this$getSeparators = this.getSeparators(),
-        decimalSeparator = _this$getSeparators.decimalSeparator;
-
+      decimalSeparator = _this$getSeparators.decimalSeparator;
     var numRegex = this.getNumberRegex(true);
     var hasNegation = num[0] === '-';
     if (hasNegation) num = num.replace('-', '');
     num = (num.match(numRegex) || []).join('').replace(decimalSeparator, '.');
     var firstDecimalIndex = num.indexOf('.');
-
     if (firstDecimalIndex !== -1) {
       num = num.substring(0, firstDecimalIndex) + "." + num.substring(firstDecimalIndex + 1, num.length).replace(new RegExp(escapeRegExp(decimalSeparator), 'g'), '');
     }
-
     if (hasNegation) num = '-' + num;
     return num;
   };
-
   _proto.getNumberRegex = function getNumberRegex(g, ignoreDecimalSeparator) {
     var _this$props = this.props,
-        format = _this$props.format,
-        decimalScale = _this$props.decimalScale;
-
+      format = _this$props.format,
+      decimalScale = _this$props.decimalScale;
     var _this$getSeparators2 = this.getSeparators(),
-        decimalSeparator = _this$getSeparators2.decimalSeparator;
-
+      decimalSeparator = _this$getSeparators2.decimalSeparator;
     return new RegExp('\\d' + (decimalSeparator && decimalScale !== 0 && !ignoreDecimalSeparator && !format ? '|' + escapeRegExp(decimalSeparator) : ''), g ? 'g' : undefined);
   };
-
   _proto.getSeparators = function getSeparators() {
     var _this$props2 = this.props,
-        decimalSeparator = _this$props2.decimalSeparator,
-        thousandSpacing = _this$props2.thousandSpacing;
+      decimalSeparator = _this$props2.decimalSeparator,
+      thousandSpacing = _this$props2.thousandSpacing;
     var thousandSeparator = this.props.thousandSeparator;
-
     if (thousandSeparator === true) {
       thousandSeparator = ',';
     }
-
     return {
       decimalSeparator: decimalSeparator,
       thousandSeparator: thousandSeparator,
       thousandSpacing: thousandSpacing
     };
   };
-
   _proto.getMaskAtIndex = function getMaskAtIndex(index) {
     var _this$props$mask = this.props.mask,
-        mask = _this$props$mask === void 0 ? ' ' : _this$props$mask;
-
+      mask = _this$props$mask === void 0 ? ' ' : _this$props$mask;
     if (typeof mask === 'string') {
       return mask;
     }
-
     return mask[index] || ' ';
   };
-
   _proto.validateProps = function validateProps() {
     var mask = this.props.mask;
-
     var _this$getSeparators3 = this.getSeparators(),
-        decimalSeparator = _this$getSeparators3.decimalSeparator,
-        thousandSeparator = _this$getSeparators3.thousandSeparator;
-
+      decimalSeparator = _this$getSeparators3.decimalSeparator,
+      thousandSeparator = _this$getSeparators3.thousandSeparator;
     if (decimalSeparator === thousandSeparator) {
       throw new Error("\n          Decimal separator can't be same as thousand separator.\n\n          thousandSeparator: " + thousandSeparator + " (thousandSeparator = {true} is same as thousandSeparator = \",\")\n          decimalSeparator: " + decimalSeparator + " (default value for decimalSeparator is .)\n       ");
     }
-
     if (mask) {
       var maskAsStr = mask === 'string' ? mask : mask.toString();
-
       if (maskAsStr.match(/\d/g)) {
         throw new Error("\n          Mask " + mask + " should not contain numeric character;\n        ");
       }
     }
   };
-
   _proto.splitDecimal = function splitDecimal(numStr) {
     var allowNegative = this.props.allowNegative;
     var hasNagation = numStr[0] === '-';
@@ -1363,25 +1347,21 @@ var CurrencyFormat = /*#__PURE__*/function (_React$Component) {
       addNegation: addNegation
     };
   };
-
   _proto.setPatchedCaretPosition = function setPatchedCaretPosition(el, caretPos, currentValue) {
     setCaretPosition(el, caretPos);
     setTimeout(function () {
       if (el.value === currentValue) setCaretPosition(el, caretPos);
     }, 0);
   };
-
   _proto.correctCaretPosition = function correctCaretPosition(value, caretPos, direction) {
     var _this$props3 = this.props,
-        prefix = _this$props3.prefix,
-        suffix = _this$props3.suffix,
-        format = _this$props3.format;
-
+      prefix = _this$props3.prefix,
+      suffix = _this$props3.suffix,
+      format = _this$props3.format;
     if (!format) {
       var hasNegation = value[0] === '-';
       return Math.min(Math.max(caretPos, prefix.length + (hasNegation ? 1 : 0)), value.length - suffix.length);
     }
-
     if (typeof format === 'function') return caretPos;
     if (format[caretPos] === '#' && charIsNumber(value[caretPos])) return caretPos;
     if (format[caretPos - 1] === '#' && charIsNumber(value[caretPos - 1])) return caretPos;
@@ -1391,15 +1371,12 @@ var CurrencyFormat = /*#__PURE__*/function (_React$Component) {
     var nextPos = format.substring(caretPos, format.length).indexOf('#');
     var caretLeftBound = caretPos;
     var caretRightBoud = caretPos + (nextPos === -1 ? 0 : nextPos);
-
     while (caretLeftBound > firstHashPosition && (format[caretLeftBound] !== '#' || !charIsNumber(value[caretLeftBound]))) {
       caretLeftBound -= 1;
     }
-
     var goToLeft = !charIsNumber(value[caretRightBoud]) || direction === 'left' && caretPos !== firstHashPosition || caretPos - caretLeftBound < caretRightBoud - caretPos;
     return goToLeft ? caretLeftBound + 1 : caretRightBoud;
   };
-
   _proto.getCaretPosition = function getCaretPosition(inputValue, formattedValue, caretPos) {
     var format = this.props.format;
     var stateValue = this.state.value;
@@ -1408,34 +1385,25 @@ var CurrencyFormat = /*#__PURE__*/function (_React$Component) {
     var formattedNumber = (formattedValue.match(numRegex) || []).join('');
     var j, i;
     j = 0;
-
     for (i = 0; i < caretPos; i++) {
       var currentInputChar = inputValue[i] || '';
       var currentFormatChar = formattedValue[j] || '';
       if (!currentInputChar.match(numRegex) && currentInputChar !== currentFormatChar) continue;
       if (currentInputChar === '0' && currentFormatChar.match(numRegex) && currentFormatChar !== '0' && inputNumber.length !== formattedNumber.length) continue;
-
-      while (currentInputChar !== formattedValue[j] && j < formattedValue.length) {
-        j++;
-      }
-
+      while (currentInputChar !== formattedValue[j] && j < formattedValue.length) j++;
       j++;
     }
-
     if (typeof format === 'string' && !stateValue) {
       j = formattedValue.length;
     }
-
     j = this.correctCaretPosition(formattedValue, j);
     return j;
   };
-
   _proto.removePrefixAndSuffix = function removePrefixAndSuffix(val) {
     var _this$props4 = this.props,
-        format = _this$props4.format,
-        prefix = _this$props4.prefix,
-        suffix = _this$props4.suffix;
-
+      format = _this$props4.format,
+      prefix = _this$props4.prefix,
+      suffix = _this$props4.suffix;
     if (!format && val) {
       var isNegative = val[0] === '-';
       if (isNegative) val = val.substring(1, val.length);
@@ -1444,10 +1412,8 @@ var CurrencyFormat = /*#__PURE__*/function (_React$Component) {
       val = suffix && suffixLastIndex !== -1 && suffixLastIndex === val.length - suffix.length ? val.substring(0, suffixLastIndex) : val;
       if (isNegative) val = '-' + val;
     }
-
     return val;
   };
-
   _proto.removePatternFormatting = function removePatternFormatting(val) {
     var format = this.props.format;
     var formatArray = format.split('#').filter(function (str) {
@@ -1455,11 +1421,9 @@ var CurrencyFormat = /*#__PURE__*/function (_React$Component) {
     });
     var start = 0;
     var numStr = '';
-
     for (var i = 0, ln = formatArray.length; i <= ln; i++) {
       var part = formatArray[i] || '';
       var index = i === ln ? val.length : val.indexOf(part, start);
-
       if (index === -1) {
         numStr = val;
         break;
@@ -1468,16 +1432,13 @@ var CurrencyFormat = /*#__PURE__*/function (_React$Component) {
         start = index + part.length;
       }
     }
-
     return (numStr.match(/\d/g) || []).join('');
   };
-
   _proto.removeFormatting = function removeFormatting(val) {
     var _this$props5 = this.props,
-        format = _this$props5.format,
-        removeFormatting = _this$props5.removeFormatting;
+      format = _this$props5.format,
+      removeFormatting = _this$props5.removeFormatting;
     if (!val) return val;
-
     if (!format) {
       val = this.removePrefixAndSuffix(val);
       val = this.getFloatString(val);
@@ -1488,88 +1449,68 @@ var CurrencyFormat = /*#__PURE__*/function (_React$Component) {
     } else {
       val = (val.match(/\d/g) || []).join('');
     }
-
     return val;
   };
-
   _proto.formatWithPattern = function formatWithPattern(numStr) {
     var format = this.props.format;
     var hashCount = 0;
     var formattedNumberAry = format.split('');
-
     for (var i = 0, ln = format.length; i < ln; i++) {
       if (format[i] === '#') {
         formattedNumberAry[i] = numStr[hashCount] || this.getMaskAtIndex(hashCount);
         hashCount += 1;
       }
     }
-
     return formattedNumberAry.join('');
   };
-
   _proto.formatThousand = function formatThousand(beforeDecimal, thousandSeparator, thousandSpacing) {
     var digitalGroup;
-
     switch (thousandSpacing) {
       case thousandGroupSpacing.two:
         digitalGroup = /(\d)(?=(\d{2})+(?!\d))/g;
         break;
-
       case thousandGroupSpacing.twoScaled:
         digitalGroup = /(\d)(?=(((\d{2})+)(\d{1})(?!\d)))/g;
         break;
-
       case thousandGroupSpacing.four:
         digitalGroup = /(\d)(?=(\d{4})+(?!\d))/g;
         break;
-
       default:
         digitalGroup = /(\d)(?=(\d{3})+(?!\d))/g;
     }
-
     return beforeDecimal.replace(digitalGroup, '$1' + thousandSeparator);
   };
-
   _proto.formatAsNumber = function formatAsNumber(numStr) {
     var _this$props6 = this.props,
-        decimalScale = _this$props6.decimalScale,
-        fixedDecimalScale = _this$props6.fixedDecimalScale,
-        prefix = _this$props6.prefix,
-        suffix = _this$props6.suffix;
-
+      decimalScale = _this$props6.decimalScale,
+      fixedDecimalScale = _this$props6.fixedDecimalScale,
+      prefix = _this$props6.prefix,
+      suffix = _this$props6.suffix;
     var _this$getSeparators4 = this.getSeparators(),
-        thousandSeparator = _this$getSeparators4.thousandSeparator,
-        decimalSeparator = _this$getSeparators4.decimalSeparator,
-        thousandSpacing = _this$getSeparators4.thousandSpacing;
-
+      thousandSeparator = _this$getSeparators4.thousandSeparator,
+      decimalSeparator = _this$getSeparators4.decimalSeparator,
+      thousandSpacing = _this$getSeparators4.thousandSpacing;
     var hasDecimalSeparator = numStr.indexOf('.') !== -1 || decimalScale && fixedDecimalScale;
-
     var _this$splitDecimal = this.splitDecimal(numStr),
-        beforeDecimal = _this$splitDecimal.beforeDecimal,
-        afterDecimal = _this$splitDecimal.afterDecimal,
-        addNegation = _this$splitDecimal.addNegation;
-
+      beforeDecimal = _this$splitDecimal.beforeDecimal,
+      afterDecimal = _this$splitDecimal.afterDecimal,
+      addNegation = _this$splitDecimal.addNegation;
     if (decimalScale !== undefined) afterDecimal = limitToScale(afterDecimal, decimalScale, fixedDecimalScale);
-
     if (thousandSeparator) {
       beforeDecimal = this.formatThousand(beforeDecimal, thousandSeparator, thousandSpacing);
     }
-
     if (prefix) beforeDecimal = prefix + beforeDecimal;
     if (suffix) afterDecimal = afterDecimal + suffix;
     if (addNegation) beforeDecimal = '-' + beforeDecimal;
     numStr = beforeDecimal + (hasDecimalSeparator && decimalSeparator || '') + afterDecimal;
     return numStr;
   };
-
   _proto.formatNumString = function formatNumString(value) {
     if (value === void 0) {
       value = '';
     }
-
     var format = this.props.format;
     var formattedValue = value;
-
     if (value === '') {
       formattedValue = '';
     } else if (value === '-' && !format) {
@@ -1582,136 +1523,107 @@ var CurrencyFormat = /*#__PURE__*/function (_React$Component) {
     } else {
       formattedValue = this.formatAsNumber(formattedValue);
     }
-
     return formattedValue;
   };
-
   _proto.formatValueProp = function formatValueProp() {
     var _this$props7 = this.props,
-        format = _this$props7.format,
-        decimalScale = _this$props7.decimalScale,
-        fixedDecimalScale = _this$props7.fixedDecimalScale;
+      format = _this$props7.format,
+      decimalScale = _this$props7.decimalScale,
+      fixedDecimalScale = _this$props7.fixedDecimalScale;
     var _this$props8 = this.props,
-        value = _this$props8.value,
-        isNumericString = _this$props8.isNumericString;
+      value = _this$props8.value,
+      isNumericString = _this$props8.isNumericString;
     if (value === undefined) return '';
-
     if (typeof value === 'number') {
       value = value.toString();
       isNumericString = true;
     }
-
     if (isNumericString && !format && typeof decimalScale === 'number') {
       value = roundToPrecision(value, decimalScale, fixedDecimalScale);
     }
-
     var formattedValue = isNumericString ? this.formatNumString(value) : this.formatInput(value);
     return formattedValue;
   };
-
   _proto.formatNegation = function formatNegation(value) {
     if (value === void 0) {
       value = '';
     }
-
     var allowNegative = this.props.allowNegative;
     var negationRegex = new RegExp('(-)');
     var doubleNegationRegex = new RegExp('(-)(.)*(-)');
     var hasNegation = negationRegex.test(value);
     var removeNegation = doubleNegationRegex.test(value);
     value = value.replace(/-/g, '');
-
     if (hasNegation && !removeNegation && allowNegative) {
       value = '-' + value;
     }
-
     return value;
   };
-
   _proto.formatInput = function formatInput(value) {
     if (value === void 0) {
       value = '';
     }
-
     var format = this.props.format;
-
     if (!format) {
       value = this.formatNegation(value);
     }
-
     value = this.removeFormatting(value);
     return this.formatNumString(value);
   };
-
   _proto.isCharacterAFormat = function isCharacterAFormat(caretPos, value) {
     var _this$props9 = this.props,
-        format = _this$props9.format,
-        prefix = _this$props9.prefix,
-        suffix = _this$props9.suffix,
-        decimalScale = _this$props9.decimalScale,
-        fixedDecimalScale = _this$props9.fixedDecimalScale;
-
+      format = _this$props9.format,
+      prefix = _this$props9.prefix,
+      suffix = _this$props9.suffix,
+      decimalScale = _this$props9.decimalScale,
+      fixedDecimalScale = _this$props9.fixedDecimalScale;
     var _this$getSeparators5 = this.getSeparators(),
-        decimalSeparator = _this$getSeparators5.decimalSeparator;
-
+      decimalSeparator = _this$getSeparators5.decimalSeparator;
     if (typeof format === 'string' && format[caretPos] !== '#') return true;
-
     if (!format && (caretPos < prefix.length || caretPos >= value.length - suffix.length || decimalScale && fixedDecimalScale && value[caretPos] === decimalSeparator)) {
       return true;
     }
-
     return false;
   };
-
   _proto.checkIfFormatGotDeleted = function checkIfFormatGotDeleted(start, end, value) {
     for (var i = start; i < end; i++) {
       if (this.isCharacterAFormat(i, value)) return true;
     }
-
     return false;
   };
-
   _proto.correctInputValue = function correctInputValue(caretPos, lastValue, value) {
     var format = this.props.format;
     var lastNumStr = this.state.numAsString || '';
-
     if (value.length >= lastValue.length || !value.length) {
       return value;
     }
-
     var start = caretPos;
     var lastValueParts = splitString(lastValue, caretPos);
     var newValueParts = splitString(value, caretPos);
     var deletedIndex = lastValueParts[1].lastIndexOf(newValueParts[1]);
     var diff = deletedIndex !== -1 ? lastValueParts[1].substring(0, deletedIndex) : '';
     var end = start + diff.length;
-
     if (this.checkIfFormatGotDeleted(start, end, lastValue)) {
       value = lastValue;
     }
-
     if (!format) {
       var numericString = this.removeFormatting(value);
-
       var _this$splitDecimal2 = this.splitDecimal(numericString),
-          beforeDecimal = _this$splitDecimal2.beforeDecimal,
-          afterDecimal = _this$splitDecimal2.afterDecimal,
-          addNegation = _this$splitDecimal2.addNegation;
-
+        beforeDecimal = _this$splitDecimal2.beforeDecimal,
+        afterDecimal = _this$splitDecimal2.afterDecimal,
+        addNegation = _this$splitDecimal2.addNegation;
       if (numericString.length < lastNumStr.length && beforeDecimal === '' && !parseFloat(afterDecimal)) {
         return addNegation ? '-' : '';
       }
     }
-
     return value;
   };
-
   _proto.onChange = function onChange(e) {
     e.persist();
     var el = e.target;
     var inputValue = el.value;
     var state = this.state,
-        props = this.props;
+      props = this.props;
     var isAllowed = props.isAllowed;
     var lastValue = state.value || '';
     var currentCaretPosition = Math.max(el.selectionStart, el.selectionEnd);
@@ -1723,15 +1635,12 @@ var CurrencyFormat = /*#__PURE__*/function (_React$Component) {
       value: numAsString,
       floatValue: parseFloat(numAsString)
     };
-
     if (!isAllowed(valueObj)) {
       formattedValue = lastValue;
     }
-
     el.value = formattedValue;
     var caretPos = this.getCaretPosition(inputValue, formattedValue, currentCaretPosition);
     this.setPatchedCaretPosition(el, caretPos, formattedValue);
-
     if (formattedValue !== lastValue) {
       this.setState({
         value: formattedValue,
@@ -1744,15 +1653,13 @@ var CurrencyFormat = /*#__PURE__*/function (_React$Component) {
       props.onChange(e);
     }
   };
-
   _proto.onBlur = function onBlur(e) {
     var props = this.props,
-        state = this.state;
+      state = this.state;
     var format = props.format,
-        onBlur = props.onBlur;
+      onBlur = props.onBlur;
     var numAsString = state.numAsString;
     var lastValue = state.value;
-
     if (!format) {
       numAsString = fixLeadingZero(numAsString);
       var formattedValue = this.formatNumString(numAsString);
@@ -1761,7 +1668,6 @@ var CurrencyFormat = /*#__PURE__*/function (_React$Component) {
         value: numAsString,
         floatValue: parseFloat(numAsString)
       };
-
       if (formattedValue !== lastValue) {
         e.persist();
         this.setState({
@@ -1774,29 +1680,26 @@ var CurrencyFormat = /*#__PURE__*/function (_React$Component) {
         return;
       }
     }
-
     onBlur(e);
   };
-
   _proto.onKeyDown = function onKeyDown(e) {
     var el = e.target;
     var key = e.key;
     var selectionEnd = el.selectionEnd,
-        value = el.value;
+      value = el.value;
     var selectionStart = el.selectionStart;
     var expectedCaretPosition;
     var _this$props10 = this.props,
-        decimalScale = _this$props10.decimalScale,
-        fixedDecimalScale = _this$props10.fixedDecimalScale,
-        prefix = _this$props10.prefix,
-        suffix = _this$props10.suffix,
-        format = _this$props10.format,
-        onKeyDown = _this$props10.onKeyDown;
+      decimalScale = _this$props10.decimalScale,
+      fixedDecimalScale = _this$props10.fixedDecimalScale,
+      prefix = _this$props10.prefix,
+      suffix = _this$props10.suffix,
+      format = _this$props10.format,
+      onKeyDown = _this$props10.onKeyDown;
     var ignoreDecimalSeparator = decimalScale !== undefined && fixedDecimalScale;
     var numRegex = this.getNumberRegex(false, ignoreDecimalSeparator);
     var negativeRegex = new RegExp('-');
     var isPatternFormat = typeof format === 'string';
-
     if (key === 'ArrowLeft' || key === 'Backspace') {
       expectedCaretPosition = selectionStart - 1;
     } else if (key === 'ArrowRight') {
@@ -1804,85 +1707,66 @@ var CurrencyFormat = /*#__PURE__*/function (_React$Component) {
     } else if (key === 'Delete') {
       expectedCaretPosition = selectionStart;
     }
-
     if (expectedCaretPosition === undefined || selectionStart !== selectionEnd) {
       onKeyDown(e);
       return;
     }
-
     var newCaretPosition = expectedCaretPosition;
     var leftBound = isPatternFormat ? format.indexOf('#') : prefix.length;
     var rightBound = isPatternFormat ? format.lastIndexOf('#') + 1 : value.length - suffix.length;
-
     if (key === 'ArrowLeft' || key === 'ArrowRight') {
       var direction = key === 'ArrowLeft' ? 'left' : 'right';
       newCaretPosition = this.correctCaretPosition(value, expectedCaretPosition, direction);
     } else if (key === 'Delete' && !numRegex.test(value[expectedCaretPosition]) && !negativeRegex.test(value[expectedCaretPosition])) {
-      while (!numRegex.test(value[newCaretPosition]) && newCaretPosition < rightBound) {
-        newCaretPosition++;
-      }
+      while (!numRegex.test(value[newCaretPosition]) && newCaretPosition < rightBound) newCaretPosition++;
     } else if (key === 'Backspace' && !numRegex.test(value[expectedCaretPosition]) && !negativeRegex.test(value[expectedCaretPosition])) {
       while (!numRegex.test(value[newCaretPosition - 1]) && newCaretPosition > leftBound) {
         newCaretPosition--;
       }
-
       newCaretPosition = this.correctCaretPosition(value, newCaretPosition, 'left');
     }
-
     if (newCaretPosition !== expectedCaretPosition || expectedCaretPosition < leftBound || expectedCaretPosition > rightBound) {
       e.preventDefault();
       this.setPatchedCaretPosition(el, newCaretPosition, value);
     }
-
     if (e.isUnitTestRun) {
       this.setPatchedCaretPosition(el, newCaretPosition, value);
     }
-
     this.props.onKeyDown(e);
   };
-
   _proto.onMouseUp = function onMouseUp(e) {
     var el = e.target;
     var selectionStart = el.selectionStart,
-        selectionEnd = el.selectionEnd,
-        value = el.value;
-
+      selectionEnd = el.selectionEnd,
+      value = el.value;
     if (selectionStart === selectionEnd) {
       var caretPostion = this.correctCaretPosition(value, selectionStart);
-
       if (caretPostion !== selectionStart) {
         this.setPatchedCaretPosition(el, caretPostion, value);
       }
     }
-
     this.props.onMouseUp(e);
   };
-
   _proto.onFocus = function onFocus(e) {
     var _this2 = this;
-
     e.persist();
     setTimeout(function () {
       var el = e.target;
       var selectionStart = el.selectionStart,
-          value = el.value;
-
+        value = el.value;
       var caretPosition = _this2.correctCaretPosition(value, selectionStart);
-
       if (caretPosition !== selectionStart) {
         _this2.setPatchedCaretPosition(el, caretPosition, value);
       }
-
       _this2.props.onFocus(e);
     });
   };
-
   _proto.render = function render() {
     var _this$props11 = this.props,
-        type = _this$props11.type,
-        displayType = _this$props11.displayType,
-        customInput = _this$props11.customInput,
-        renderText = _this$props11.renderText;
+      type = _this$props11.type,
+      displayType = _this$props11.displayType,
+      customInput = _this$props11.customInput,
+      renderText = _this$props11.renderText;
     var value = this.state.value;
     var otherProps = omit(this.props, propTypes$1);
     var inputProps = Object.assign({}, otherProps, {
@@ -1894,20 +1778,16 @@ var CurrencyFormat = /*#__PURE__*/function (_React$Component) {
       onFocus: this.onFocus,
       onBlur: this.onBlur
     });
-
     if (displayType === 'text') {
       return renderText ? renderText(value) || null : /*#__PURE__*/React.createElement("span", otherProps, value);
     } else if (customInput) {
       var CustomInput = customInput;
       return /*#__PURE__*/React.createElement(CustomInput, inputProps);
     }
-
     return /*#__PURE__*/React.createElement("input", inputProps);
   };
-
   return CurrencyFormat;
 }(React.Component);
-
 CurrencyFormat.propTypes = propTypes$1;
 CurrencyFormat.defaultProps = defaultProps;
 module.exports = CurrencyFormat;

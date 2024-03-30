@@ -815,4 +815,4 @@ class CurrencyFormat extends React.Component {
 CurrencyFormat.propTypes = propTypes;
 CurrencyFormat.defaultProps = defaultProps;
 
-module.exports = CurrencyFormat;
+export default CurrencyFormat;
