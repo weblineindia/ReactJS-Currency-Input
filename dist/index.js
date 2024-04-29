@@ -1790,5 +1790,6 @@ var CurrencyFormat = /*#__PURE__*/function (_React$Component) {
 }(React.Component);
 CurrencyFormat.propTypes = propTypes$1;
 CurrencyFormat.defaultProps = defaultProps;
+
 module.exports = CurrencyFormat;
 //# sourceMappingURL=index.js.map
